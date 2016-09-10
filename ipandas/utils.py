@@ -1,8 +1,9 @@
+import ast
 import inspect
 import re
-import typing
+from collections import namedtuple
 from inspect import Signature
-from typing import Callable, List
+from typing import NamedTuple, List, Callable
 
 import logbook
 
@@ -21,21 +22,78 @@ commas_not_preceded_by_brackets = re.compile(r'(?<=[\]})])\s*,', re.MULTILINE)
 comma_followed_by_brackets = re.compile(r',(?=\s*[\[{(])\s*', re.MULTILINE)
 
 
-class KeywordMatch(typing.NamedTuple('KeywordMatch', [('keyword', str), ('is_complete', str)])):
+class KeywordMatch(NamedTuple('KeywordMatch', [('keyword', str), ('is_complete', str)])):
     pass
 
 
-def _extract_argument_from_string(argument_string: str):
+class ArgumentResult(namedtuple('ArgumentResult',
+                                ['argument', 'is_complete', 'is_collection', 'current_value'])):
+    pass
+
+
+def has_open_quotes(s):
+    # We check " first, then ', so complex cases with nested quotes will get
+    # the " to take precedence.
+    if s.count('"') % 2:
+        return '"'
+    elif s.count("'") % 2:
+        return "'"
+    else:
+        return False
+
+
+def has_open_bracket(string):
+    if string.count('[') == string.count(']'):
+        return False
+    return True
+
+
+def has_open_dict(string):
+    if string.count('{') == string.count('}'):
+        return False
+    else:
+        comma_followed_by_brackets = re.compile(r',(?=\s*[\[{(])\s*', re.MULTILINE)
+
+
+def _extract_argument_from_string(argument_string: str) -> ArgumentResult:
     argument_is_complete = False
     if not argument_string:
         argument_is_complete = True
-        return '', argument_is_complete
+        return ArgumentResult(None, argument_is_complete, is_collection=False, current_value=None)
 
     argument_string = argument_string.strip('"').strip("'").strip()
     first_char = argument_string[0]
+    arguments = None
     if first_char == '[':
-        argument_is_complete = argument_string.count('[') == argument_string.count(']')
-        if not argument_is_complete
+        argument_is_complete = not has_open_bracket(argument_string)
+        if argument_is_complete:
+            return ArgumentResult(ast.literal_eval(argument_string),
+                                  is_complete=argument_is_complete,
+                                  is_collection=True,
+                                  current_value=None)
+        open_quote = has_open_quotes(argument_string)
+        last_in_collection = None
+        if open_quote:
+            last_in_collection = argument_string[argument_string.rfind(open_quote):].strip(open_quote)
+
+        while has_open_quotes(argument_string):
+            open_quote = has_open_quotes(argument_string)
+            argument_string += open_quote
+
+        while has_open_bracket(argument_string):
+            argument_string += ']'
+
+        # we don't return the last value as part of the collection
+        if last_in_collection:
+            ret = ast.literal_eval(argument_string)[:-1]
+        else:
+            ret = ast.literal_eval(argument_string)
+
+        return ArgumentResult(ret,
+                              is_complete=argument_is_complete,
+                              is_collection=True,
+                              current_value=last_in_collection)
+
 
 def _extract_last_value_from_string_argument(argument_string: str) -> str:
     """
@@ -112,7 +170,7 @@ def extract_keyword_args_from_arguments_string(arguments_string_until_current_va
             param, value = d['identifier'], d['kw']
             numerical_match = d.get('num')
             if numerical_match:
-                value = to_int_or_float(value)
+                value = coerce_to_number(value)
             matches.append((param, value))
 
     elif function_object:
@@ -154,12 +212,12 @@ def extract_keyword_args_from_arguments_string(arguments_string_until_current_va
     return keywords
 
 
-def to_int_or_float(current_value):
+def coerce_to_number(s):
     try:
-        current_value = int(current_value)
+        s = int(s)
     except ValueError:
         try:
-            current_value = float(current_value)
+            s = float(s)
         except ValueError:
             pass
-    return current_value
+    return s
