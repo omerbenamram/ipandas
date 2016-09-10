@@ -42,12 +42,14 @@ def has_open_quotes(s):
         return False
 
 
+# TODO: this doesn't consider brackets inside strings at all
 def has_open_bracket(string):
     if string.count('[') == string.count(']'):
         return False
     return True
 
 
+# TODO: this is not finished..
 def has_open_dict(string):
     if string.count('{') == string.count('}'):
         return False
