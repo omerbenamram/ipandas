@@ -16,8 +16,10 @@ def test_completes_simple_slicing(completer_with_dataframe):
     text, matches = c.complete('df[[')
     assert set(matches) == {'Name', 'FavoriteFood'}
 
-    c = completer_with_dataframe
     text, matches = c.complete('df[["N')
+    assert set(matches) == {'Name'}
+
+    text, matches = c.complete('df[["Ev", "N')
     assert set(matches) == {'Name'}
 
     # this should not complete anything

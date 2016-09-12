@@ -11,7 +11,7 @@ from ipandas.utils import extract_keyword_args_from_arguments_string
 
 logger = logbook.Logger('IPandasCompleter')
 
-slice_re = re.compile(r'(?P<dataframe>\w+)\[\[[\'\"\w]*\]?\]?$', re.MULTILINE)
+slice_re = re.compile(r'(?P<dataframe>\w+)\[\[[\s,\'\"\w]*\]?\]?$', re.MULTILINE)
 # matches s._stats(field_name="a", by="
 function_re = re.compile(r'(?P<object>\w+)\.(?P<function>\w+)\((?P<kwargs>.*)$', re.MULTILINE)
 # matches field_name="a", by=" and extracts groups
