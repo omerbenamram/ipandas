@@ -31,8 +31,9 @@ def complete_columns(frame: DataFrame, method_name=None, current_value=None, **k
 
 
 def complete_slice(frame: DataFrame, method_name: str = None, text=None, current_value: str = None, **kwargs) -> List[str]:
-    matches = list(re.finditer(r'\[\[[\'\"](?P<match>\w+)', text))
-    if matches:
+    matches = list(re.finditer(r'(\w+)', text))
+    # skip match only df
+    if matches and len(matches) > 1:
         current_value = matches[-1].groups()[0]
     return complete_columns(frame=frame, method_name=None, current_value=current_value)
 
