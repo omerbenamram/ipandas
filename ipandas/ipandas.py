@@ -30,8 +30,11 @@ def complete_columns(frame: DataFrame, method_name=None, current_value=None, **k
     return list(filter(lambda x: x.startswith(current_value), available_columns))
 
 
-def complete_slice(frame: DataFrame, method_name: str = None, current_value: str = None, **kwargs) -> List[str]:
-    return complete_columns(frame=frame, method_name=None)
+def complete_slice(frame: DataFrame, method_name: str = None, text=None, current_value: str = None, **kwargs) -> List[str]:
+    matches = list(re.finditer(r'\[\[[\'\"](?P<match>\w+)', text))
+    if matches:
+        current_value = matches[-1].groups()[0]
+    return complete_columns(frame=frame, method_name=None, current_value=current_value)
 
 
 def complete_keyword(frame: DataFrame, session: InteractiveShell,
